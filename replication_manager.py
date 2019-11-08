@@ -1,6 +1,6 @@
 import json
 import random
-
+import threading
 
 
 class ReplicationManager:
@@ -12,6 +12,7 @@ class ReplicationManager:
         self.mode = mode
         self.membership = []
         self.primary = None
+        
 
     def establish_membership(self, gfd_init_info):
         """
@@ -62,3 +63,34 @@ class ReplicationManager:
         Returns the IPs of all the current members.
         """
         return self.membership
+
+    def tcp_server(self,port, logfile, verbose=False):
+    try:
+        
+        host_ip = socket.gethostbyname(socket.gethostname())
+        print(RED + "Starting chat server on " + str(host_ip) + ":" + str(port) + RESET)
+        with open(logfile, 'a') as f:
+            f.write("{}: Starting server\n".format(time.ctime()))
+
+        s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) # IPv4, TCPIP
+        s.bind((host_ip, port))
+        s.listen(5)
+
+        while(True):
+            # Accept a new connection
+            conn, addr = s.accept()
+
+            # Initiate a client listening thread
+            threading.Thread(target=client_service_thread, args=(conn,addr, logfile, verbose)).start()
+
+    except KeyboardInterrupt:
+        # Closing the server
+        s.close()
+        print()
+        print(RED + "Closing chat server on " + str(host_ip) + ":" + str(port) + RESET)
+        with open(logfile, 'a') as f:
+            f.write("{}: Closing server\n".format(time.ctime()))
+
+if __name__ == '__main__':
+    rep_mgr_obj = ReplicationManager()
+    
