@@ -111,7 +111,8 @@ class ReplicationManager:
                 try:
                     connection.settimeout(2)
                     data = connection.recv(1024)
-                    print("Hearbeat received from GFD")
+                    print(data.decode('utf-8'))   
+                    #print("Hearbeat received from GFD")
                     connection.settimeout(None)
                 except socket.timeout:
                     print("Receive timeout")
@@ -138,13 +139,14 @@ class ReplicationManager:
         connection.settimeout(None)
 
         try:
-            print('connection from', gfd_address)
+            print('connection for membership', gfd_address)
 
             # Waiting for gfd updates
             # If gfd is not alive, close the connection
             while self.gfd_isAlive:
                 data = connection.recv(1024)
-                # connection.settimeout(None)                
+                # connection.settimeout(None)    
+                print(data.decode('utf-8'))            
                 #print('Updates received from GFD :{!r}'.format(data))
 
                 if data:
@@ -157,7 +159,7 @@ class ReplicationManager:
                     
         except Exception as e:
             # Anything fails, ie: replica server fails
-            print("GFD connection lost")
+            print(e)
             # Clean up the connection
             connection.close()
     
@@ -236,6 +238,9 @@ class ReplicationManager:
             break
 
 
+
+if __name__=="__main__":
+    rm = ReplicationManager()
 
             
 
