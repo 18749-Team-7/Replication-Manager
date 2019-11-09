@@ -69,7 +69,6 @@ class ReplicationManager:
                         self.pick_primary()
         print("\n The current membership is :")
         print(self.membership)
-                
         return 
 
 
@@ -237,6 +236,8 @@ class ReplicationManager:
 
             break
 
+if __name__=="__main__":
+    rm = ReplicationManager()
 
 
 if __name__=="__main__":
