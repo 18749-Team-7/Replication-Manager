@@ -8,10 +8,21 @@ class ReplicationManager:
     Alien Tech.
     """
 
-    def __init__(self, mode='active'):
+    def __init__(self, mode='active', rm_port=10001, gfd_port=10002):
         self.mode = mode
         self.membership = []
         self.primary = None
+        self.rm_port = rm_port
+        self.gfd_port = gfd_port
+
+
+        self.gfd_thread = threading.Thread(target=self.gfd_thread_func)
+        self.gfd_heartbeat_thread = threading.Thread(target=self.gfd_heartbeat)
+        
+        self.gfd_thread.start()
+        self.gfd_heartbeat_thread.start()
+        print("GFD heartbeat thread started.")
+
 
     def establish_membership(self, gfd_init_info):
         """
@@ -62,3 +73,81 @@ class ReplicationManager:
         Returns the IPs of all the current members.
         """
         return self.membership
+
+    
+    def gfd_heartbeat(self):
+        # Create a TCP/IP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        # Bind the socket to the replication port
+        server_address = ('localhost', self.gfd_port)
+        print('Starting listening on replication manager {} port {}'.format(*server_address))
+        sock.bind(server_address)
+        
+        # Listen for incoming connections
+        sock.listen(1)
+
+        connection, gfd_address = sock.accept()
+
+        try:
+            print('connection from', gfd_address)
+
+            # Waiting for gfd heart beat
+                while True:
+                    try:
+                        connection.settimeout(2)
+                        data = connection.recv(1024)
+                        connection.settimeout(None)
+                    except socket.timeout:
+                        print("Receive timeout")
+                        self.gfd_isAlive = False
+                        connection.close()
+                        break
+
+
+    def gfd_thread_func(self):
+        # Create a TCP/IP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        # Bind the socket to the replication port
+        server_address = ('localhost', self.rm_port)
+        print('Starting listening on replication manager {} port {}'.format(*server_address))
+        sock.bind(server_address)
+        
+        # Listen for incoming connections
+        sock.listen(1)
+
+        connection, gfd_address = sock.accept()
+
+        try:
+            print('connection from', gfd_address)
+
+            # Waiting for gfd updates
+            while True:
+                data = connection.recv(1024)
+                # connection.settimeout(None)                
+                print('Updates received from GFD :{!r}'.format(data))
+
+                if data:
+                    data.decode('utf-8')
+                    self.modify_membership(data)
+                    
+        except Exception as e:
+            # Anything fails, ie: replica server fails
+            print("GFD connection lost")
+            # Clean up the connection
+            connection.close()
+        
+
+    
+
+if __name__ == '__main__':
+    start_time = time.time()
+
+    args = get_args()
+    tcp_server(args.port, args.logfile, args.verbose)
+
+    print("\nTotal time taken: " + str(time.time() - start_time) + " seconds")
+
+    # Exit
+    os._exit(1)
