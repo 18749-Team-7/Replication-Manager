@@ -35,18 +35,6 @@ class ReplicationManager:
         print("GFD heartbeat thread started.")
 
 
-    def establish_membership(self, gfd_init_info):
-        """
-        Function to establish initial membership of replicas based on GFD feedback.
-
-        param gfd_init_info: Dict() where keys-IPs of relica servers, values- Init status.
-        """
-
-        for member, status in gfd_init_info.item():
-            if status:
-                self.membership.append(self.map(member))
-
-
     def modify_membership(self, gfd_info):
         """
         Function modifies the membership based on the updates from the GFD.
@@ -154,6 +142,7 @@ class ReplicationManager:
                     data2 = data
                     data2 = json.loads(data2.decode('utf-8'))
                     self.modify_membership(data2)
+                    print('Membership: ' + self.membership)
             connection.close()
                     
         except Exception as e:
