@@ -1,6 +1,7 @@
 import json
 import random
 import threading
+import socket
 
 
 class ReplicationManager:
@@ -19,7 +20,7 @@ class ReplicationManager:
         self.gfd_thread = threading.Thread(target=self.gfd_thread_func)
         self.gfd_heartbeat_thread = threading.Thread(target=self.gfd_heartbeat)
         
-        
+        #self.gfd_thread.start()
         self.gfd_heartbeat_thread.start()
         print("GFD heartbeat thread started.")
 
@@ -42,8 +43,7 @@ class ReplicationManager:
 
         param gfd_info: Dict() where keys-IPs of relica servers, values- updated status.
         """
-        
-        for member, status in gfd_info.item():
+        for member, status in gfd_info.items():
             if status:
                 if member not in self.membership:
                     self.membership.append(member)
@@ -55,6 +55,8 @@ class ReplicationManager:
                 if self.mode == 'passive':
                     if member == self.primary:
                         self.pick_primary()
+        print("\n The current membership is :")
+        print(self.membership)
                 
         return 
 
@@ -121,6 +123,7 @@ class ReplicationManager:
         sock.listen(1)
 
         connection, gfd_address = sock.accept()
+        connection.settimeout(None)
 
         try:
             print('connection from', gfd_address)
@@ -130,11 +133,14 @@ class ReplicationManager:
             while self.gfd_isAlive:
                 data = connection.recv(1024)
                 # connection.settimeout(None)                
-                print('Updates received from GFD :{!r}'.format(data))
+                #print('Updates received from GFD :{!r}'.format(data))
 
                 if data:
-                    data.decode('utf-8')
-                    self.modify_membership(data)
+                    print("Updates received from GFD : ")
+                    print(data.decode('utf-8'))
+                    data2 = data
+                    data2 = json.loads(data2.decode('utf-8'))
+                    self.modify_membership(data2)
             connection.close()
                     
         except Exception as e:
