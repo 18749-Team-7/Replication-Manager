@@ -174,13 +174,15 @@ class ReplicationManager:
 
             print("Connection from:", msg["client_id"])
 
+            threading.Thread(target=self.client_recv_thread, args=(conn, msg["client_id"])).start()
+
             self.client_mem_mutex.acquire()
             self.client_membership[msg["client_id"]] = conn
             self.client_mem_mutex.release()
 
             try:
                 rm_msg = {}
-                rm_msg["type"] = "replica_IPs"
+                rm_msg["type"] = "new_replica_IPs"
                 rm_msg["ip_list"] = self.get_replica_ips()
 
                 data = json.dumps(rm_msg)
@@ -189,13 +191,16 @@ class ReplicationManager:
                 print("Connection with client {} closed unexpectedly".format(msg["client_id"]))
 
 
-            threading.Thread(target=self.client_recv_thread, args=(conn, msg["client_id"])).start()
+            
 
     def send_replica_IPs(self):
         # Create the replica membership message
         msg = {}
-        msg["type"] = "replica_IPs"
+        msg["type"] = "update_replica_IPs"
         msg["ip_list"] = self.get_replica_ips()
+
+        if not msg["ip_list"]:
+            return
 
         data = json.dumps(msg)
 
@@ -223,6 +228,7 @@ class ReplicationManager:
             del self.client_membership[msg["client_id"]]
             self.client_mem_mutex.release()
 
+            conn.close()
             break
 
 if __name__=="__main__":
