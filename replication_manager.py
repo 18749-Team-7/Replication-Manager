@@ -12,12 +12,9 @@ class ReplicationManager:
         self.mode = mode
         self.membership = []
         self.primary = None
-<<<<<<< HEAD
-        
-=======
         self.rm_port = rm_port
         self.gfd_port = gfd_port
-
+        self.gfd_isAlive = False
 
         self.gfd_thread = threading.Thread(target=self.gfd_thread_func)
         self.gfd_heartbeat_thread = threading.Thread(target=self.gfd_heartbeat)
@@ -26,7 +23,6 @@ class ReplicationManager:
         self.gfd_heartbeat_thread.start()
         print("GFD heartbeat thread started.")
 
->>>>>>> 375a271be269965d08ba509e05f8c4e033e53461
 
     def establish_membership(self, gfd_init_info):
         """
@@ -53,6 +49,7 @@ class ReplicationManager:
                     self.membership.append(member)
             else:
                 self.membership.remove(member)
+                # Send change_replica_ips request to the client 
 
                 # Elect a new primary if running on passive mode.
                 if self.mode == 'passive':
@@ -78,38 +75,6 @@ class ReplicationManager:
         """
         return self.membership
 
-<<<<<<< HEAD
-    def tcp_server(self,port, logfile, verbose=False):
-    try:
-        
-        host_ip = socket.gethostbyname(socket.gethostname())
-        print(RED + "Starting chat server on " + str(host_ip) + ":" + str(port) + RESET)
-        with open(logfile, 'a') as f:
-            f.write("{}: Starting server\n".format(time.ctime()))
-
-        s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) # IPv4, TCPIP
-        s.bind((host_ip, port))
-        s.listen(5)
-
-        while(True):
-            # Accept a new connection
-            conn, addr = s.accept()
-
-            # Initiate a client listening thread
-            threading.Thread(target=client_service_thread, args=(conn,addr, logfile, verbose)).start()
-
-    except KeyboardInterrupt:
-        # Closing the server
-        s.close()
-        print()
-        print(RED + "Closing chat server on " + str(host_ip) + ":" + str(port) + RESET)
-        with open(logfile, 'a') as f:
-            f.write("{}: Closing server\n".format(time.ctime()))
-
-if __name__ == '__main__':
-    rep_mgr_obj = ReplicationManager()
-    
-=======
     
     def gfd_heartbeat(self):
         # Create a TCP/IP socket
@@ -118,27 +83,28 @@ if __name__ == '__main__':
         # Bind the socket to the replication port
         server_address = ('localhost', self.gfd_port)
         print('Starting listening on replication manager {} port {}'.format(*server_address))
-        sock.bind(server_address)
-        
-        # Listen for incoming connections
-        sock.listen(1)
-
-        connection, gfd_address = sock.accept()
-
         try:
+            sock.bind(server_address)
+        
+            # Listen for incoming connections
+            sock.listen(1)
+            connection, gfd_address = sock.accept()      
             print('connection from', gfd_address)
-
             # Waiting for gfd heart beat
-                while True:
-                    try:
-                        connection.settimeout(2)
-                        data = connection.recv(1024)
-                        connection.settimeout(None)
-                    except socket.timeout:
-                        print("Receive timeout")
-                        self.gfd_isAlive = False
-                        connection.close()
-                        break
+            while True:
+                try:
+                    connection.settimeout(2)
+                    data = connection.recv(1024)
+                    self.gfd_isAlive = True
+                    print("Hearbeat received from GFD")
+                    connection.settimeout(None)
+                except socket.timeout:
+                    print("Receive timeout")
+                    self.gfd_isAlive = False
+                    connection.close()
+                    break
+        except :
+            print('Heartbeat connection failed on replication manager {} port {}'.format(*server_address))
 
 
     def gfd_thread_func(self):
@@ -176,15 +142,3 @@ if __name__ == '__main__':
         
 
     
-
-if __name__ == '__main__':
-    start_time = time.time()
-
-    args = get_args()
-    tcp_server(args.port, args.logfile, args.verbose)
-
-    print("\nTotal time taken: " + str(time.time() - start_time) + " seconds")
-
-    # Exit
-    os._exit(1)
->>>>>>> 375a271be269965d08ba509e05f8c4e033e53461
