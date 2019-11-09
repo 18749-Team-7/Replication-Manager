@@ -19,7 +19,7 @@ class ReplicationManager:
         self.gfd_thread = threading.Thread(target=self.gfd_thread_func)
         self.gfd_heartbeat_thread = threading.Thread(target=self.gfd_heartbeat)
         
-        self.gfd_thread.start()
+        
         self.gfd_heartbeat_thread.start()
         print("GFD heartbeat thread started.")
 
@@ -90,12 +90,13 @@ class ReplicationManager:
             sock.listen(1)
             connection, gfd_address = sock.accept()      
             print('connection from', gfd_address)
+            self.gfd_isAlive = True
+            self.gfd_thread.start()
             # Waiting for gfd heart beat
             while True:
                 try:
                     connection.settimeout(2)
                     data = connection.recv(1024)
-                    self.gfd_isAlive = True
                     print("Hearbeat received from GFD")
                     connection.settimeout(None)
                 except socket.timeout:
@@ -125,7 +126,8 @@ class ReplicationManager:
             print('connection from', gfd_address)
 
             # Waiting for gfd updates
-            while True:
+            # If gfd is not alive, close the connection
+            while self.gfd_isAlive:
                 data = connection.recv(1024)
                 # connection.settimeout(None)                
                 print('Updates received from GFD :{!r}'.format(data))
@@ -133,6 +135,7 @@ class ReplicationManager:
                 if data:
                     data.decode('utf-8')
                     self.modify_membership(data)
+            connection.close()
                     
         except Exception as e:
             # Anything fails, ie: replica server fails
