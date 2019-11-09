@@ -17,11 +17,21 @@ class ReplicationManager:
         self.gfd_port = gfd_port
         self.gfd_isAlive = False
 
+        # Client parameters
+        self.client_membership = {}
+        self.client_port = 6666
+        self.client_mem_mutex = threading.Lock() # Lock between add and remove client threads
+
+        # GFD threads
         self.gfd_thread = threading.Thread(target=self.gfd_thread_func)
         self.gfd_heartbeat_thread = threading.Thread(target=self.gfd_heartbeat)
+
+        # Client threads
+        self.clients_thread = threading.Thread(target=self.add_clients)
         
         #self.gfd_thread.start()
         self.gfd_heartbeat_thread.start()
+        self.clients_thread.start()
         print("GFD heartbeat thread started.")
 
 
@@ -49,7 +59,9 @@ class ReplicationManager:
                     self.membership.append(member)
             else:
                 self.membership.remove(member)
+
                 # Send change_replica_ips request to the client 
+                self.send_replica_IPs()
 
                 # Elect a new primary if running on passive mode.
                 if self.mode == 'passive':
@@ -147,7 +159,87 @@ class ReplicationManager:
             print("GFD connection lost")
             # Clean up the connection
             connection.close()
+    
+    def add_clients(self):
+        # Create a TCP/IP socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # IPv4, TCPIP
+
+        # Bind the socket to the replication port
+        server_address = ('localhost', self.client_port)
+        print('Starting listening for clients on replication manager {} port {}'.format(*server_address))
+        s.bind(server_address)
         
+        # Listen for incoming connections
+        s.listen(5)
+        while True:
+            # Accept a client connection
+            conn, client_addr = s.accept()
+
+            # Get the first packet which is add packet
+            data = conn.recv(1024)
+            msg = json.loads(data.decode("utf-8"))
+
+            assert(msg["type"] == "add_client_rm")
+
+            print("Connection from:", msg["client_id"])
+
+            self.client_mem_mutex.acquire()
+            self.client_membership[msg["client_id"]] = conn
+            self.client_mem_mutex.release()
+
+            try:
+                rm_msg = {}
+                rm_msg["type"] = "replica_IPs"
+                rm_msg["ip_list"] = self.get_replica_ips()
+
+                data = json.dumps(rm_msg)
+                conn.send(data.encode("utf-8"))
+            except:
+                print("Connection with client {} closed unexpectedly".format(msg["client_id"]))
+
+
+            threading.Thread(target=self.client_recv_thread, args=(conn, msg["client_id"])).start()
+
+    def send_replica_IPs(self):
+        # Create the replica membership message
+        msg = {}
+        msg["type"] = "replica_IPs"
+        msg["ip_list"] = self.get_replica_ips()
+
+        data = json.dumps(msg)
+
+        # Send the message to all clients
+        self.client_mem_mutex.acquire()
+        for client_id, s_client in self.client_membership.items():
+            try: 
+                s_client.send(data.encode("utf-8"))
+            except:
+                print("Connection with client {} closed unexpectedly".format(client_id))
+        self.client_mem_mutex.release()
+
+        return
+
+    def client_recv_thread(self, conn, client_id):
+        while True:
+            data = conn.recv(1024)
+            msg = json.loads(data.decode("utf-8"))
+
+            assert(msg["type"] == "del_client_rm")
+
+            print("Disconnecting:", msg["client_id"])
+
+            self.client_mem_mutex.acquire()
+            del self.client_membership[msg["client_id"]]
+            self.client_mem_mutex.release()
+
+            break
 
 if __name__=="__main__":
-    rm = ReplicationManager()  
+    rm = ReplicationManager()
+
+
+            
+
+            
+
+            
