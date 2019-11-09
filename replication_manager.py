@@ -57,7 +57,6 @@ class ReplicationManager:
                         self.pick_primary()
         print("\n The current membership is :")
         print(self.membership)
-                
         return 
 
 
@@ -150,4 +149,5 @@ class ReplicationManager:
             connection.close()
         
 
-    
+if __name__=="__main__":
+    rm = ReplicationManager()  
