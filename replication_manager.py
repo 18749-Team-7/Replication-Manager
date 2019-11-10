@@ -137,7 +137,7 @@ class ReplicationManager:
             while self.gfd_isAlive:
                 data = connection.recv(1024)
                 # connection.settimeout(None)    
-                print(data.decode('utf-8'))            
+                # print(data.decode('utf-8'))            
                 #print('Updates received from GFD :{!r}'.format(data))
 
                 if data:
