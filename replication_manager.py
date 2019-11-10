@@ -40,21 +40,25 @@ class ReplicationManager:
         Function modifies the membership based on the updates from the GFD.
 
         param gfd_info: Dict() where keys-IPs of relica servers, values- updated status.
+        # GFD only sends info regarding each replica at a given time.
         """
-        for member, status in gfd_info.items():
-            if status:
-                if member not in self.membership:
-                    self.membership.append(member)
-            else:
+        member = gfd_info['server_ip']
+        status = gfd_info['status']
+
+        if status:
+            if member not in self.membership:
+                self.membership.append(member)
+        else:
+            if member in self.membership:
                 self.membership.remove(member)
 
-                # Send change_replica_ips request to the client 
-                self.send_replica_IPs()
+            # Send change_replica_ips request to the client 
+            self.send_replica_IPs()
 
-                # Elect a new primary if running on passive mode.
-                if self.mode == 'passive':
-                    if member == self.primary:
-                        self.pick_primary()
+            # Elect a new primary if running on passive mode.
+            if self.mode == 'passive':
+                if member == self.primary:
+                    self.pick_primary()
         print("\n The updated membership is :")
         print(self.membership)
         return 
@@ -98,7 +102,7 @@ class ReplicationManager:
                 try:
                     connection.settimeout(2)
                     data = connection.recv(1024)
-                    print(data.decode('utf-8'))   
+                    #print(data.decode('utf-8'))   
                     #print("Hearbeat received from GFD")
                     connection.settimeout(None)
                 except socket.timeout:
@@ -137,8 +141,8 @@ class ReplicationManager:
                 #print('Updates received from GFD :{!r}'.format(data))
 
                 if data:
-                    print("Updates received from GFD : ")
-                    print(data.decode('utf-8'))
+                    # print("Updates received from GFD : ")
+                    # print(data.decode('utf-8'))
                     data2 = data
                     data2 = json.loads(data2.decode('utf-8'))
                     self.modify_membership(data2)
