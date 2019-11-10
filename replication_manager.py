@@ -17,6 +17,10 @@ class ReplicationManager:
         self.gfd_port = gfd_port
         self.gfd_isAlive = False
 
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        self.host_ip = s.getsockname()[0]
+
         # Client parameters
         self.client_membership = {}
         self.client_port = 6666
@@ -48,12 +52,13 @@ class ReplicationManager:
         if status:
             if member not in self.membership:
                 self.membership.append(member)
+                self.send_replica_IPs()
         else:
             if member in self.membership:
                 self.membership.remove(member)
 
-            # Send change_replica_ips request to the client 
-            self.send_replica_IPs()
+                # Send change_replica_ips request to the client 
+                self.send_replica_IPs()
 
             # Elect a new primary if running on passive mode.
             if self.mode == 'passive':
@@ -86,10 +91,10 @@ class ReplicationManager:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Bind the socket to the replication port
-        host_name = socket.gethostname() 
-        host_ip = socket.gethostbyname(host_name) 
+        # host_name = socket.gethostname() 
+        # host_ip = socket.gethostbyname(host_name) 
 
-        server_address = (host_ip, self.gfd_port)
+        server_address = (self.host_ip, self.gfd_port)
         print('Starting listening on replication manager {} port {}'.format(*server_address))
         try:
             sock.bind(server_address)
@@ -122,10 +127,10 @@ class ReplicationManager:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Bind the socket to the replication port
-        host_name = socket.gethostname() 
-        host_ip = socket.gethostbyname(host_name) 
+        # host_name = socket.gethostname() 
+        # host_ip = socket.gethostbyname(host_name) 
 
-        server_address = (host_ip, self.rm_port)
+        server_address = (self.host_ip, self.rm_port)
         print('Starting listening on replication manager {} port {}'.format(*server_address))
         sock.bind(server_address)
         
@@ -165,7 +170,10 @@ class ReplicationManager:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # IPv4, TCPIP
 
         # Bind the socket to the replication port
-        server_address = ('localhost', self.client_port)
+        # host_name = socket.gethostname() 
+        # host_ip = socket.gethostbyname(host_name) 
+
+        server_address = (self.host_ip, self.client_port)
         print('Starting listening for clients on replication manager {} port {}'.format(*server_address))
         s.bind(server_address)
         
@@ -173,7 +181,7 @@ class ReplicationManager:
         s.listen(5)
         while True:
             # Accept a client connection
-            conn, client_addr = s.accept()
+            conn, _ = s.accept()
 
             # Get the first packet which is add packet
             data = conn.recv(1024)
@@ -207,9 +215,6 @@ class ReplicationManager:
         msg = {}
         msg["type"] = "update_replica_IPs"
         msg["ip_list"] = self.get_replica_ips()
-
-        if not msg["ip_list"]:
-            return
 
         data = json.dumps(msg)
 
