@@ -55,7 +55,7 @@ class ReplicationManager:
                 if self.mode == 'passive':
                     if member == self.primary:
                         self.pick_primary()
-        print("\n The current membership is :")
+        print("\n The updated membership is :")
         print(self.membership)
         return 
 
@@ -142,7 +142,6 @@ class ReplicationManager:
                     data2 = data
                     data2 = json.loads(data2.decode('utf-8'))
                     self.modify_membership(data2)
-                    print('Membership: ' + self.membership)
             connection.close()
                     
         except Exception as e:
@@ -233,13 +232,3 @@ class ReplicationManager:
 
 if __name__=="__main__":
     rm = ReplicationManager()
-
-
-if __name__=="__main__":
-    rm = ReplicationManager()
-
-            
-
-            
-
-            
