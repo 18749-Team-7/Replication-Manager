@@ -86,7 +86,10 @@ class ReplicationManager:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Bind the socket to the replication port
-        server_address = ('localhost', self.gfd_port)
+        host_name = socket.gethostname() 
+        host_ip = socket.gethostbyname(host_name) 
+
+        server_address = (host_ip, self.gfd_port)
         print('Starting listening on replication manager {} port {}'.format(*server_address))
         try:
             sock.bind(server_address)
@@ -119,7 +122,10 @@ class ReplicationManager:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Bind the socket to the replication port
-        server_address = ('localhost', self.rm_port)
+        host_name = socket.gethostname() 
+        host_ip = socket.gethostbyname(host_name) 
+
+        server_address = (host_ip, self.rm_port)
         print('Starting listening on replication manager {} port {}'.format(*server_address))
         sock.bind(server_address)
         
