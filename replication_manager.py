@@ -45,7 +45,7 @@ class ReplicationManager:
         #self.gfd_thread.start()
         self.gfd_heartbeat_thread.start()
         self.clients_thread.start()
-        print("GFD heartbeat thread started.")
+        print(RED + "GFD heartbeat thread started" + RESET)
 
 
     def modify_membership(self, gfd_info):
@@ -62,6 +62,8 @@ class ReplicationManager:
             if member not in self.membership:
                 self.membership.append(member)
                 self.send_replica_IPs()
+
+                print(GREEN + "The updated membership is: {}".format(self.membership))
         else:
             if member in self.membership:
                 self.membership.remove(member)
@@ -73,8 +75,8 @@ class ReplicationManager:
             if self.mode == 'passive':
                 if member == self.primary:
                     self.pick_primary()
-        print("\n The updated membership is :")
-        print(self.membership)
+
+            print(GREEN + "The updated membership is: {}".format(self.membership))
         return 
 
 
