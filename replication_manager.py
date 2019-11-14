@@ -61,15 +61,22 @@ class ReplicationManager:
         if status:
             if member not in self.membership:
                 self.membership.append(member)
-                self.send_replica_IPs()
+                # self.send_replica_IPs()
+                msg = {}
+                msg["type"] = "add_replicas"
+                msg["ip_list"] = [member]
+                self.send_replica_IPs(msg)
 
-                print(GREEN + "The updated membership is: {}".format(self.membership))
+                print(RED + "The updated membership is: {}".format(self.membership))
         else:
             if member in self.membership:
                 self.membership.remove(member)
 
-                # Send change_replica_ips request to the client 
-                self.send_replica_IPs()
+                msg = {}
+                msg["type"] = "del_replicas"
+                msg["ip_list"] = [member]
+                
+                self.send_replica_IPs(msg)
 
             # Elect a new primary if running on passive mode.
             if self.mode == 'passive':
@@ -210,7 +217,7 @@ class ReplicationManager:
 
             try:
                 rm_msg = {}
-                rm_msg["type"] = "new_replica_IPs"
+                rm_msg["type"] = "add_replicas"
                 rm_msg["ip_list"] = self.get_replica_ips()
 
                 data = json.dumps(rm_msg)
@@ -221,21 +228,16 @@ class ReplicationManager:
 
             
 
-    def send_replica_IPs(self):
-        # Create the replica membership message
-        msg = {}
-        msg["type"] = "update_replica_IPs"
-        msg["ip_list"] = self.get_replica_ips()
-
-        data = json.dumps(msg)
-
+    def send_replica_IPs(self, msg):
         # Send the message to all clients
+        data = json.dumps(msg)
         self.client_mem_mutex.acquire()
         for client_id, s_client in self.client_membership.items():
             try: 
                 s_client.send(data.encode("utf-8"))
             except:
                 print("Connection with client {} closed unexpectedly".format(client_id))
+                del self.client_membership[client_id]
         self.client_mem_mutex.release()
 
         return
