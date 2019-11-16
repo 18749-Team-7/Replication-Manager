@@ -13,6 +13,7 @@ CYAN =      "\u001b[36m"
 WHITE =     "\u001b[37m"
 RESET =     "\u001b[0m"
 
+
 class ReplicationManager:
     """
     Alien Tech.
@@ -25,6 +26,10 @@ class ReplicationManager:
         self.rm_port = rm_port
         self.gfd_port = gfd_port
         self.gfd_isAlive = False
+
+        self.replica_port = 15000
+
+        self.RP_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
 
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -51,7 +56,6 @@ class ReplicationManager:
     def modify_membership(self, gfd_info):
         """
         Function modifies the membership based on the updates from the GFD.
-
         param gfd_info: Dict() where keys-IPs of relica servers, values- updated status.
         # GFD only sends info regarding each replica at a given time.
         """
@@ -67,6 +71,13 @@ class ReplicationManager:
                 msg["ip_list"] = [member]
                 self.send_replica_IPs(msg)
 
+                msg_all = {}
+                msg_all["type"] = "all_replicas"
+                msg_all["ip_list"] = self.membership
+
+                # sending updates to replicas
+                self.send_replica_updates(msg, msg_all)
+
                 print(RED + "The updated membership is: {}".format(self.membership))
         else:
             if member in self.membership:
@@ -77,6 +88,13 @@ class ReplicationManager:
                 msg["ip_list"] = [member]
                 
                 self.send_replica_IPs(msg)
+
+                msg_all = {}
+                msg_all["type"] = "all_replicas"
+                msg_all["ip_list"] = self.membership
+
+                # sending updates to replicas
+                self.send_replica_updates(msg, msg_all)
 
             # Elect a new primary if running on passive mode.
             if self.mode == 'passive':
@@ -90,7 +108,6 @@ class ReplicationManager:
     def pick_primary(self):
         """
         Randomly pick a replica as primary from all members.
-
         """
         # Change this later!!!
         self.primary = random.choice(self.membership)
@@ -239,6 +256,22 @@ class ReplicationManager:
                 print("Connection with client {} closed unexpectedly".format(client_id))
                 del self.client_membership[client_id]
         self.client_mem_mutex.release()
+
+        return
+
+    # function to send replica list to replicas using UDP
+    def send_replica_updates(self, msg, all_replicas):
+        # Send the message to all replicas
+        data_msg = json.dumps(msg)
+        data_all_replicas = json.dumps(all_replicas)
+
+        for replica_id in self.membership:
+            # check which replica it is
+            if (replica_id == msg["ip_list"][0]): # if it is new replica
+                self.RP_sock.sendto(data_all_replicas.encode("utf-8"), (replica_id, self.replica_port))
+            else:
+                self.RP_sock.sendto(data_msg.encode("utf-8"), (replica_id, self.replica_port))
+
 
         return
 
