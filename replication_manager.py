@@ -2,6 +2,8 @@ import json
 import random
 import threading
 import socket
+import sys
+import tkinter as tk
 
 BLACK =     "\u001b[30m"
 RED =       "\u001b[31m"
@@ -12,6 +14,7 @@ MAGENTA =   "\u001b[35m"
 CYAN =      "\u001b[36m"
 WHITE =     "\u001b[37m"
 RESET =     "\u001b[0m"
+UP =        "\033[A"
 
 
 class ReplicationManager:
@@ -52,6 +55,9 @@ class ReplicationManager:
         self.clients_thread.start()
         print(RED + "GFD heartbeat thread started" + RESET)
 
+        # start the chkpt window
+        self.setup_chkpt_window()
+
 
     def modify_membership(self, gfd_info):
         """
@@ -65,15 +71,24 @@ class ReplicationManager:
         if status:
             if member not in self.membership:
                 self.membership.append(member)
-                # self.send_replica_IPs()
+
+                # When there are no primaries
+                if self.primary == None:
+                    # Set a primary
+                    self.primary = member
+                
+                # Message for alive replicas, informing about new replica
                 msg = {}
                 msg["type"] = "add_replicas"
                 msg["ip_list"] = [member]
+                msg["primary"] = self.primary
                 self.send_replica_IPs(msg)
 
+                # Message to new replica, informing about primary and all replicas
                 msg_all = {}
                 msg_all["type"] = "all_replicas"
                 msg_all["ip_list"] = self.membership
+                msg_all["primary"] = self.primary
 
                 # sending updates to replicas
                 self.send_replica_updates(msg, msg_all)
@@ -82,37 +97,110 @@ class ReplicationManager:
         else:
             if member in self.membership:
                 self.membership.remove(member)
+                
+                # If primary died, select a new primary
+                if (member == self.primary):
+                    if len(self.membership) == 0:
+                        self.primary = None
+                    else:
+                        self.primary = self.pick_primary()
 
                 msg = {}
                 msg["type"] = "del_replicas"
                 msg["ip_list"] = [member]
+                msg["primary"] = self.primary
                 
                 self.send_replica_IPs(msg)
 
+                # Inform other replicas about new primary
                 msg_all = {}
                 msg_all["type"] = "all_replicas"
                 msg_all["ip_list"] = self.membership
+                msg_all["primary"] = self.primary
 
                 # sending updates to replicas
                 self.send_replica_updates(msg, msg_all)
                 
                 print(GREEN + "The updated membership is: {}".format(self.membership))
-
-            # Elect a new primary if running on passive mode.
-            if self.mode == 'passive':
-                if member == self.primary:
-                    self.pick_primary()
-
         return 
 
+    def msg_box_control(self, msg):
+        if msg == "$client_members":
+            print(MAGENTA + "RM -> Clients connected to RM: {}".format(self.client_membership.keys()) + RESET)
+            return "break"
+
+        if msg == "$help":
+            print(MAGENTA + "RM -> Hi this is the Replication manager at {}".format(self.host_ip) + RESET)
+            print(MAGENTA + "RM -> $client_members : Lists all the members that are connected" + RESET)
+            print(MAGENTA + "RM -> $replica_members : Lists all the replica " + RESET)
+            print(MAGENTA + "RM -> $primary : Prints the primary replica " + RESET)
+            return "break"
+        
+        elif msg == "$replica_members":
+            print(MAGENTA + "RM -> Replicas connected to RM: {}".format(self.membership) + RESET)
+
+        elif msg == "$primary":
+            print(MAGENTA + "RM -> Primary replica: {}".format(self.primary) + RESET)
+
+        else:
+            print(MAGENTA + "RM -> Error: Not an internal command")
+
+    def change_chkpt_freq(self, event = None):
+        time = self.input_field.get()
+        self.input_user.set('')
+        if time == "":
+            return "break"
+        if (time[0] == "$"):
+            self.msg_box_control(time)
+            return "break"
+
+        try:
+            time = float(time)
+        except:
+            print(RED + "Error: Time specified incorrectly" + RESET)
+            return "break"
+
+
+        # Create the message packet
+        msg = {}
+        msg["type"] = "chkpt_freq"
+        msg["time"] = time
+
+        data = json.dumps(msg)
+
+        if (msg):
+            print(UP) # Cover input() line with the chat line from the server.
+
+            # Send message to primary replica with new chkpt freq
+            self.RP_sock.sendto(data.encode("utf-8"), (self.primary, self.replica_port))
+            print(MAGENTA + "Updated Checkpoint frequency to: {} s".format(time) + RESET)
+
+        return "break"
+
+    def setup_chkpt_window(self):
+        # Create a window
+        self.top = tk.Tk()
+        self.top.title("Replication manager")
+
+        # Create input text field
+        self.input_user = tk.StringVar()
+        self.input_field = tk.Entry(self.top, text=self.input_user)
+        self.input_field.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Create the frame for the text field
+        self.input_field.bind("<Return>", self.change_chkpt_freq)
+
+        self.top.bind("<Escape>", self.close_RM)
+
+        # Start the chat window
+        self.top.mainloop()
 
     def pick_primary(self):
         """
         Randomly pick a replica as primary from all members.
         """
         # Change this later!!!
-        self.primary = random.choice(self.membership)
-        return
+        return random.choice(self.membership)
 
     
     def get_replica_ips(self):
@@ -277,6 +365,10 @@ class ReplicationManager:
 
             conn.close()
             break
+
+    def close_RM(self, event = None):
+        self.top.destroy()
+        sys.exit(1)
 
 if __name__=="__main__":
     rm = ReplicationManager()
