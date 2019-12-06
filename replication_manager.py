@@ -173,7 +173,10 @@ class ReplicationManager:
             print(UP) # Cover input() line with the chat line from the server.
 
             # Send message to primary replica with new chkpt freq
-            self.RP_sock.sendto(data.encode("utf-8"), (self.primary, self.replica_port))
+            # TODO: Mutex around this
+            for replica_id in self.membership:
+                self.RP_sock.sendto(data.encode("utf-8"), (replica_id, self.replica_port))
+
             print(MAGENTA + "Updated Checkpoint frequency to: {} s".format(time) + RESET)
 
         return "break"
