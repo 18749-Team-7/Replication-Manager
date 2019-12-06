@@ -30,6 +30,7 @@ class ReplicationManager:
         self.replica_port = 15000
 
         self.RP_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
+        self.RP_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
