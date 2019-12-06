@@ -39,6 +39,9 @@ class ReplicationManager:
         s.connect(("8.8.8.8", 80))
         self.host_ip = s.getsockname()[0]
 
+        # init checkpoint frequency
+        self.chkpt_time = 5.0
+
         # Client parameters
         self.client_membership = {}
         self.client_port = 6666
@@ -77,6 +80,20 @@ class ReplicationManager:
                 if self.primary == None:
                     # Set a primary
                     self.primary = member
+
+                 # Create the message packet
+                msg = {}
+                msg["type"] = "chkpt_freq"
+                msg["time"] = self.chkpt_time
+
+                data = json.dumps(msg)
+
+                # Send message to primary replica with new chkpt freq
+                # TODO: Mutex around this
+                self.RP_sock.sendto(data.encode("utf-8"), (member, self.replica_port))
+
+                print(MAGENTA + "Updated Checkpoint frequency to: {} s".format(self.chkpt_time) + RESET)
+
                 
                 # Message for alive replicas, informing about new replica
                 msg = {}
@@ -146,22 +163,7 @@ class ReplicationManager:
         else:
             print(MAGENTA + "RM -> Error: Not an internal command")
 
-    def change_chkpt_freq(self, event = None):
-        time = self.input_field.get()
-        self.input_user.set('')
-        if time == "":
-            return "break"
-        if (time[0] == "$"):
-            self.msg_box_control(time)
-            return "break"
-
-        try:
-            time = float(time)
-        except:
-            print(RED + "Error: Time specified incorrectly" + RESET)
-            return "break"
-
-
+    def send_chkpt_freq_msg(self, time):
         # Create the message packet
         msg = {}
         msg["type"] = "chkpt_freq"
@@ -178,6 +180,26 @@ class ReplicationManager:
                 self.RP_sock.sendto(data.encode("utf-8"), (replica_id, self.replica_port))
 
             print(MAGENTA + "Updated Checkpoint frequency to: {} s".format(time) + RESET)
+        return
+
+
+    def change_chkpt_freq(self, event = None):
+        time = self.input_field.get()
+        self.input_user.set('')
+        if time == "":
+            return "break"
+        if (time[0] == "$"):
+            self.msg_box_control(time)
+            return "break"
+
+        try:
+            self.chkpt_time = float(time)
+        except:
+            print(RED + "Error: Time specified incorrectly" + RESET)
+            return "break"
+
+
+        self.send_chkpt_freq_msg(self.chkpt_time)
 
         return "break"
 
