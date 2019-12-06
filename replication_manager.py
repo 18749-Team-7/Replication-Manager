@@ -30,6 +30,7 @@ class ReplicationManager:
         self.replica_port = 15000
 
         self.RP_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
+        self.RP_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -125,6 +126,7 @@ class ReplicationManager:
     def gfd_heartbeat(self):
         # Create a TCP/IP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         gfd_count = 0
 
         server_address = (self.host_ip, self.gfd_port)
@@ -158,6 +160,7 @@ class ReplicationManager:
     def gfd_thread_func(self):
         # Create a TCP/IP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         # Bind the socket to the replication port
         # host_name = socket.gethostname() 
