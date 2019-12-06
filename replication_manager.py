@@ -197,6 +197,7 @@ class ReplicationManager:
     def add_clients(self):
         # Create a TCP/IP socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # IPv4, TCPIP
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         server_address = (self.host_ip, self.client_port)
         print(RED + 'Starting listening for clients at {}'.format(server_address) + RESET)
