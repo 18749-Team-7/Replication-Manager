@@ -265,18 +265,19 @@ class ReplicationManager:
     def client_recv_thread(self, conn, client_id):
         while True:
             data = conn.recv(1024)
-            msg = json.loads(data.decode("utf-8"))
+            if data:
+                msg = json.loads(data.decode("utf-8"))
 
-            assert(msg["type"] == "del_client_rm")
+                assert(msg["type"] == "del_client_rm")
 
-            print(RED + "Client Disconnecting:", msg["client_id"] + RESET)
+                print(RED + "Client Disconnecting:", msg["client_id"] + RESET)
 
-            self.client_mem_mutex.acquire()
-            del self.client_membership[msg["client_id"]]
-            self.client_mem_mutex.release()
+                self.client_mem_mutex.acquire()
+                del self.client_membership[msg["client_id"]]
+                self.client_mem_mutex.release()
 
-            conn.close()
-            break
+                conn.close()
+                break
 
 if __name__=="__main__":
     rm = ReplicationManager()
