@@ -255,14 +255,14 @@ class ReplicationManager:
         # Send the message to all replicas
         data_msg = json.dumps(msg)
         data_all_replicas = json.dumps(all_replicas)
-
-        for replica_id in self.membership:
-            # check which replica it is
-            if (replica_id == msg["ip_list"][0]): # if it is new replica
-                self.RP_sock.sendto(data_all_replicas.encode("utf-8"), (replica_id, self.replica_port))
-            else:
-                self.RP_sock.sendto(data_msg.encode("utf-8"), (replica_id, self.replica_port))
-
+        
+        for i in range(5):
+            for replica_id in self.membership:
+                # check which replica it is
+                if (replica_id == msg["ip_list"][0]): # if it is new replica
+                    self.RP_sock.sendto(data_all_replicas.encode("utf-8"), (replica_id, self.replica_port))
+                else:
+                    self.RP_sock.sendto(data_msg.encode("utf-8"), (replica_id, self.replica_port))
 
         return
 
