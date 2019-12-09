@@ -2,6 +2,7 @@ import json
 import random
 import threading
 import socket
+import time
 
 BLACK =     "\u001b[30m"
 RED =       "\u001b[31m"
@@ -256,14 +257,15 @@ class ReplicationManager:
         data_msg = json.dumps(msg)
         data_all_replicas = json.dumps(all_replicas)
         
-        for i in range(5):
+        # Try sending 50 times
+        for i in range(10):
             for replica_id in self.membership:
                 # check which replica it is
                 if (replica_id == msg["ip_list"][0]): # if it is new replica
                     self.RP_sock.sendto(data_all_replicas.encode("utf-8"), (replica_id, self.replica_port))
                 else:
                     self.RP_sock.sendto(data_msg.encode("utf-8"), (replica_id, self.replica_port))
-
+            print(GREEN + "Sent message at" + str(time.time()) +RESET)
         return
 
     def client_recv_thread(self, conn, client_id):
