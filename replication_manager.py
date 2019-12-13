@@ -256,11 +256,20 @@ class ReplicationManager:
             # Waiting for gfd heart beat
             while True:
                 try:
-                    connection.settimeout(2)
-                    _ = connection.recv(1024)
-                    print(BLUE + "Received heartbeat from GFD at: {} | Heartbeat count: {}".format(gfd_address, gfd_count) + RESET)
-                    gfd_count += 1
-                    connection.settimeout(None)
+                    # connection.settimeout(2)
+                    data = connection.recv(1024)
+                    # connection.settimeout(None)
+                    if data:
+                        print(BLUE + "Received heartbeat from GFD at: {} | Heartbeat count: {}".format(gfd_address, gfd_count) + RESET)
+                        gfd_count += 1
+
+                    else:
+                        print(RED + 'No data from GFD' + RESET)
+                        self.gfd_isAlive = False
+                        connection.close()
+                        break
+
+                    
                 except socket.timeout:
                     print(RED + "Received timeout for GFD Heartbeat" + RESET)
                     self.gfd_isAlive = False
