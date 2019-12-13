@@ -62,6 +62,10 @@ class ReplicationManager:
         # start the chkpt window
         self.setup_chkpt_window()
 
+    def print_exception(self):
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
 
     def modify_membership(self, gfd_info):
         """
@@ -313,6 +317,7 @@ class ReplicationManager:
             # Anything fails, ie: replica server fails
             # print(e)
             # Clean up the connection
+            self.print_exception()
             connection.close()
     
     def add_clients(self):
