@@ -2,6 +2,7 @@ import json
 import random
 import threading
 import socket
+import os
 import sys
 import tkinter as tk
 
@@ -305,20 +306,25 @@ class ReplicationManager:
             # Waiting for gfd updates
             # If gfd is not alive, close the connection
             while self.gfd_isAlive:
-                data = connection.recv(1024)         
+                try:
+                    data = connection.recv(1024)         
 
-                if data:
-                    data2 = data
-                    data2 = json.loads(data2.decode('utf-8'))
-                    self.modify_membership(data2)
+                    if data:
+                        data2 = data
+                        data2 = json.loads(data2.decode('utf-8'))
+                        self.modify_membership(data2)
+
+                except:
+                    pass
             connection.close()
                     
         except:
+            pass
             # Anything fails, ie: replica server fails
             # print(e)
             # Clean up the connection
-            self.print_exception()
-            connection.close()
+            # self.print_exception()
+            # connection.close()
     
     def add_clients(self):
         # Create a TCP/IP socket
