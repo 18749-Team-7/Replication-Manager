@@ -43,6 +43,10 @@ class ReplicationManager:
         # init checkpoint frequency
         self.chkpt_time = 5.0
 
+        #init replication type
+        self.replication_type = "active"
+
+
         # Client parameters
         self.client_membership = {}
         self.client_port = 6666
@@ -60,8 +64,11 @@ class ReplicationManager:
         self.clients_thread.start()
         print(RED + "GFD heartbeat thread started" + RESET)
 
+
         # start the chkpt window
         self.setup_chkpt_window()
+
+        
 
     def print_exception(self):
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -90,6 +97,7 @@ class ReplicationManager:
                 msg = {}
                 msg["type"] = "chkpt_freq"
                 msg["time"] = self.chkpt_time
+                
 
                 data = json.dumps(msg)
 
@@ -112,6 +120,7 @@ class ReplicationManager:
                 msg_all["type"] = "all_replicas"
                 msg_all["ip_list"] = self.membership
                 msg_all["primary"] = self.primary
+                
 
                 # sending updates to replicas
                 self.send_replica_updates(msg, msg_all)
@@ -187,26 +196,74 @@ class ReplicationManager:
             print(MAGENTA + "Updated Checkpoint frequency to: {} s".format(time) + RESET)
         return
 
+    def send_replication_msg(self, replication_type):
+        # Create the message packet
+        msg = {}
+        msg["type"] = "replication_type"
+        msg["replication"] = replication_type
+
+        data = json.dumps(msg)
+
+        if (msg):
+            print(UP) # Cover input() line with the chat line from the server.
+
+            # Send message to primary replica with new chkpt freq
+            # TODO: Mutex around this
+            for replica_id in self.membership:
+                self.RP_sock.sendto(data.encode("utf-8"), (replica_id, self.replica_port))
+
+            print(MAGENTA + "Updated Replication type to: {} s".format(replication_type) + RESET)
+        return
 
     def change_chkpt_freq(self, event = None):
-        time = self.input_field.get()
+        input_val = self.input_field.get()
         self.input_user.set('')
-        if time == "":
+        if input_val == "":
             return "break"
-        if (time[0] == "$"):
-            self.msg_box_control(time)
+        if (input_val[0] == "$"):
+            self.msg_box_control(input_val)
             return "break"
 
         try:
-            self.chkpt_time = float(time)
+            if input_val == "a":
+                self.replication_type = "active"
+            elif input_val == "p":
+                self.replication_type = "passive"
+            else:
+                self.chkpt_time = float(input_val)
         except:
             print(RED + "Error: Time specified incorrectly" + RESET)
             return "break"
 
-
-        self.send_chkpt_freq_msg(self.chkpt_time)
+        if ((input_val == "a") or (input_val == "p")):
+            self.send_replication_msg(self.replication_type)
+        else:
+            self.send_chkpt_freq_msg(self.chkpt_time)
 
         return "break"
+    
+    # def change_replication_type(self, event = None):
+    #     replication_type = self.input_field.get()
+    #     self.input_user.set('')
+    #     if time == "":
+    #         return "break"
+    #     if (time[0] == "$"):
+    #         self.msg_box_control(time)
+    #         return "break"
+
+    #     try:
+    #         self.replication_type = str(replication_type)
+    #     except:
+    #         print(RED + "Error: Time specified incorrectly" + RESET)
+    #         return "break"
+
+
+    #     self.send_chkpt_freq_msg(self.replication_type)
+
+    #     return "break"
+
+    
+    
 
     def setup_chkpt_window(self):
         # Create a window
