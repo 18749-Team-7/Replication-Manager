@@ -107,7 +107,20 @@ class ReplicationManager:
 
                 print(MAGENTA + "Updated Checkpoint frequency to: {} s".format(self.chkpt_time) + RESET)
 
+                # Create the message packet
+                msg = {}
+                msg["type"] = "replication_type"
+                msg["replication"] = self.replication_type
                 
+
+                data = json.dumps(msg)
+
+                # Send message to primary replica with new chkpt freq
+                # TODO: Mutex around this
+                self.RP_sock.sendto(data.encode("utf-8"), (member, self.replica_port))
+
+                print(MAGENTA + "Updated Replication to: {}".format(self.replication_type) + RESET)
+
                 # Message for alive replicas, informing about new replica
                 msg = {}
                 msg["type"] = "add_replicas"
