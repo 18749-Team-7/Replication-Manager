@@ -195,6 +195,7 @@ class ReplicationManager:
         msg = {}
         msg["type"] = "chkpt_freq"
         msg["time"] = time
+        msg["primary"] = self.primary
 
         data = json.dumps(msg)
 
@@ -250,8 +251,9 @@ class ReplicationManager:
 
         if ((input_val == "a") or (input_val == "p")):
             self.send_replication_msg(self.replication_type)
-        else:
-            self.send_chkpt_freq_msg(self.chkpt_time)
+            
+        
+        self.send_chkpt_freq_msg(self.chkpt_time)
 
         return "break"
     
