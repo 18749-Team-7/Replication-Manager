@@ -88,6 +88,19 @@ class ReplicationManager:
             if member not in self.membership:
                 self.membership.append(member)
 
+                # # Create the message packet
+                msg = {}
+                msg["type"] = "replication_type"
+                msg["replication"] = self.replication_type           
+
+                data = json.dumps(msg)
+
+                # Send message to primary replica with new chkpt freq
+                # TODO: Mutex around this
+                self.RP_sock.sendto(data.encode("utf-8"), (member, self.replica_port))
+
+                print(MAGENTA + "Updated Replication to: {}".format(self.replication_type) + RESET)
+
                 # When there are no primaries
                 if self.primary == None:
                     # Set a primary
@@ -97,6 +110,8 @@ class ReplicationManager:
                 msg = {}
                 msg["type"] = "chkpt_freq"
                 msg["time"] = self.chkpt_time
+                if self.replication_type == "passive":
+                    msg["primary"] = self.primary     
                 
 
                 data = json.dumps(msg)
@@ -106,20 +121,6 @@ class ReplicationManager:
                 self.RP_sock.sendto(data.encode("utf-8"), (member, self.replica_port))
 
                 print(MAGENTA + "Updated Checkpoint frequency to: {} s".format(self.chkpt_time) + RESET)
-
-                # Create the message packet
-                msg = {}
-                msg["type"] = "replication_type"
-                msg["replication"] = self.replication_type
-                
-
-                data = json.dumps(msg)
-
-                # Send message to primary replica with new chkpt freq
-                # TODO: Mutex around this
-                self.RP_sock.sendto(data.encode("utf-8"), (member, self.replica_port))
-
-                print(MAGENTA + "Updated Replication to: {}".format(self.replication_type) + RESET)
 
                 # Message for alive replicas, informing about new replica
                 msg = {}
@@ -226,7 +227,7 @@ class ReplicationManager:
             for replica_id in self.membership:
                 self.RP_sock.sendto(data.encode("utf-8"), (replica_id, self.replica_port))
 
-            print(MAGENTA + "Updated Replication type to: {} s".format(replication_type) + RESET)
+            #print(MAGENTA + "Updated Replication type to: {} s".format(replication_type) + RESET)
         return
 
     def change_chkpt_freq(self, event = None):
